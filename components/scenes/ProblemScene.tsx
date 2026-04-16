@@ -1,14 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import dynamic from "next/dynamic";
 import { ScrollScene } from "@/components/scroll/ScrollScene";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
-
-const FloatingOrb = dynamic(
-  () => import("@/components/three/FloatingOrb").then((m) => m.FloatingOrb),
-  { ssr: false }
-);
 
 
 interface StatCounterProps {
@@ -83,21 +77,7 @@ export function ProblemScene() {
     const ctx = gsap.context(() => {
       if (!sectionRef.current) return;
 
-      // Background color shift
-      gsap.fromTo(
-        sectionRef.current,
-        { backgroundColor: "#080808" },
-        {
-          backgroundColor: "#0c1a10",
-          ease: "none",
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top bottom",
-            end: "top top",
-            scrub: true,
-          },
-        }
-      );
+      // Background handled by WebGL canvas — no DOM bg animation needed
 
       // Text reveal
       if (textRef.current) {
@@ -151,16 +131,8 @@ export function ProblemScene() {
       <div
         ref={sectionRef}
         className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden px-6"
-        style={{ background: "#080808" }}
+        style={{ background: "transparent" }}
       >
-        {/* 3D orb */}
-        <div
-          className="absolute right-0 top-1/2 -translate-y-1/2 opacity-30 pointer-events-none"
-          style={{ width: "40vw", height: "40vw" }}
-        >
-          <FloatingOrb color="#4a7c59" />
-        </div>
-
         <div className="relative z-10 max-w-4xl mx-auto w-full">
           <div ref={textRef} className="mb-16">
             <p

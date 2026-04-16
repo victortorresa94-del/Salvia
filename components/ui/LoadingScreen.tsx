@@ -10,15 +10,23 @@ interface LoadingScreenProps {
 
 export function LoadingScreen({ progress, onComplete }: LoadingScreenProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const barRef = useRef<HTMLDivElement>(null);
-  const counterRef = useRef<HTMLSpanElement>(null);
-  const [displayProgress, setDisplayProgress] = useState(0);
+  const displayRef = useRef({ val: 0 });
+  const [displayPct, setDisplayPct] = useState(0);
   const [completed, setCompleted] = useState(false);
+  const animRef = useRef<gsap.core.Tween | null>(null);
 
+  // Animate display percentage smoothly to match real progress
   useEffect(() => {
-    setDisplayProgress(Math.round(progress * 100));
+    if (animRef.current) animRef.current.kill();
+    animRef.current = gsap.to(displayRef.current, {
+      val: Math.round(progress * 100),
+      duration: 0.6,
+      ease: "power2.out",
+      onUpdate: () => setDisplayPct(Math.round(displayRef.current.val)),
+    });
   }, [progress]);
 
+  // Trigger exit when progress hits 1
   useEffect(() => {
     if (progress < 1 || completed) return;
     setCompleted(true);
@@ -27,7 +35,7 @@ export function LoadingScreen({ progress, onComplete }: LoadingScreenProps) {
       yPercent: -100,
       duration: 1.2,
       ease: "power3.inOut",
-      delay: 0.4,
+      delay: 0.5,
       onComplete,
     });
   }, [progress, completed, onComplete]);
@@ -40,11 +48,11 @@ export function LoadingScreen({ progress, onComplete }: LoadingScreenProps) {
     >
       <div className="text-center mb-16">
         <h1
-          className="text-5xl tracking-[0.5em] uppercase mb-2"
+          className="text-5xl uppercase mb-2"
           style={{
             fontFamily: "var(--font-playfair)",
             color: "var(--text)",
-            letterSpacing: "0.4em",
+            letterSpacing: "0.45em",
           }}
         >
           SALVIA
@@ -57,26 +65,25 @@ export function LoadingScreen({ progress, onComplete }: LoadingScreenProps) {
         </p>
       </div>
 
-      <div className="w-48 flex flex-col items-center gap-3">
+      <div className="w-52 flex flex-col items-center gap-3">
         <div
           className="w-full h-px relative overflow-hidden"
           style={{ background: "rgba(240,237,232,0.1)" }}
         >
           <div
-            ref={barRef}
-            className="absolute inset-y-0 left-0 transition-all duration-300"
+            className="absolute inset-y-0 left-0"
             style={{
-              width: `${displayProgress}%`,
+              width: `${displayPct}%`,
               background: "linear-gradient(90deg, var(--accent), var(--accent-warm))",
+              transition: "width 0.4s ease",
             }}
           />
         </div>
         <span
-          ref={counterRef}
           className="text-xs tabular-nums"
           style={{ color: "var(--text-muted)" }}
         >
-          {displayProgress}%
+          {displayPct}%
         </span>
       </div>
     </div>

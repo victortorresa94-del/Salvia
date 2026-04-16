@@ -95,7 +95,7 @@ export function SolutionScene() {
       <div
         ref={sectionRef}
         className="relative w-full h-full flex items-center justify-center overflow-hidden px-6"
-        style={{ background: "#0c1a10" }}
+        style={{ background: "transparent" }}
       >
         {/* Vertical progress line */}
         <div

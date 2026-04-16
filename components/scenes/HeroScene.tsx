@@ -1,33 +1,26 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import dynamic from "next/dynamic";
 import { ScrollScene } from "@/components/scroll/ScrollScene";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 
-const ParticleField = dynamic(
-  () => import("@/components/three/ParticleField").then((m) => m.ParticleField),
-  { ssr: false }
-);
-
 export function HeroScene() {
-  const sectionRef = useRef<HTMLElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
+  const eyebrowRef = useRef<HTMLParagraphElement>(null);
   const subRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
-  const bgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
       if (!sectionRef.current || !headlineRef.current) return;
 
-      // Letter-by-letter headline on scroll
+      // Letter-by-letter headline reveal on first scroll
       const headline = headlineRef.current;
       const letters = headline.innerText.split("");
       headline.innerHTML = letters
-        .map(
-          (l) =>
-            `<span style="display:inline-block;overflow:hidden;vertical-align:bottom"><span style="display:inline-block;transform:translateY(110%)">${l === " " ? "&nbsp;" : l}</span></span>`
+        .map((l) =>
+          `<span style="display:inline-block;overflow:hidden;vertical-align:bottom"><span style="display:inline-block;transform:translateY(110%)">${l === " " ? "&nbsp;" : l}</span></span>`
         )
         .join("");
 
@@ -35,52 +28,77 @@ export function HeroScene() {
 
       gsap.to(inners, {
         y: "0%",
-        duration: 1.4,
+        duration: 1.6,
         ease: "power3.out",
-        stagger: 0.04,
+        stagger: 0.035,
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
-          end: "+=60%",
-          scrub: 0.8,
+          end: "+=50%",
+          scrub: 1,
         },
       });
 
-      // Sub and CTA fade in
+      // Eyebrow fade in
+      gsap.fromTo(
+        eyebrowRef.current,
+        { opacity: 0, y: 20, letterSpacing: "0.8em" },
+        {
+          opacity: 1,
+          y: 0,
+          letterSpacing: "0.5em",
+          duration: 1.2,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: "top top",
+            end: "+=20%",
+            scrub: 1,
+          },
+        }
+      );
+
+      // Sub + CTA fade in with parallax
       gsap.fromTo(
         [subRef.current, ctaRef.current],
-        { opacity: 0, y: 30 },
+        { opacity: 0, y: 40 },
         {
           opacity: 1,
           y: 0,
           duration: 1,
-          stagger: 0.2,
+          stagger: 0.15,
           ease: "power3.out",
           scrollTrigger: {
             trigger: sectionRef.current,
-            start: "40% top",
-            end: "+=40%",
+            start: "35% top",
+            end: "+=35%",
             scrub: 0.8,
           },
         }
       );
 
-      // Radial glow expand on scroll
-      gsap.fromTo(
-        bgRef.current,
-        { scale: 0.6, opacity: 0 },
-        {
-          scale: 1.4,
-          opacity: 0.35,
-          ease: "none",
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top top",
-            end: "bottom top",
-            scrub: true,
-          },
-        }
-      );
+      // Parallax: headline drifts at different rate than sub (depth effect)
+      gsap.to(headline, {
+        y: "-8vh",
+        ease: "none",
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: "top top",
+          end: "bottom top",
+          scrub: true,
+        },
+      });
+
+      gsap.to(subRef.current, {
+        y: "-4vh",
+        ease: "none",
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: "top top",
+          end: "bottom top",
+          scrub: true,
+        },
+      });
     });
 
     return () => ctx.revert();
@@ -88,35 +106,23 @@ export function HeroScene() {
 
   return (
     <ScrollScene height="400vh" id="hero">
-      <div ref={sectionRef as React.RefObject<HTMLDivElement>} className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden">
-        {/* Particle background */}
-        <ParticleField />
-
-        {/* Radial glow */}
-        <div
-          ref={bgRef}
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            width: "60vw",
-            height: "60vw",
-            background:
-              "radial-gradient(circle, rgba(74,124,89,0.3) 0%, rgba(74,124,89,0.05) 50%, transparent 70%)",
-            filter: "blur(60px)",
-          }}
-        />
-
-        {/* Hero content */}
+      <div
+        ref={sectionRef}
+        className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden"
+        style={{ background: "transparent" }}
+      >
         <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
           <p
-            className="text-xs tracking-[0.5em] uppercase mb-8"
-            style={{ color: "var(--accent-warm)" }}
+            ref={eyebrowRef}
+            className="text-[10px] uppercase mb-10 opacity-0"
+            style={{ color: "var(--accent-warm)", letterSpacing: "0.5em" }}
           >
             Premium Botanical Nootropic
           </p>
 
           <h1
             ref={headlineRef}
-            className="leading-none mb-8 select-none"
+            className="leading-none mb-10 select-none"
             style={{
               fontFamily: "var(--font-playfair)",
               color: "var(--text)",
@@ -140,11 +146,8 @@ export function HeroScene() {
           <div ref={ctaRef} className="mt-12 opacity-0">
             <a
               href="#problem"
-              className="inline-block px-10 py-4 text-sm tracking-[0.2em] uppercase border transition-all duration-500 group"
-              style={{
-                borderColor: "var(--accent)",
-                color: "var(--text)",
-              }}
+              className="inline-block px-10 py-4 text-sm tracking-[0.2em] uppercase border transition-colors duration-500"
+              style={{ borderColor: "var(--accent)", color: "var(--text)" }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLElement).style.background = "var(--accent)";
               }}
@@ -164,10 +167,9 @@ export function HeroScene() {
         >
           <span className="text-[10px] tracking-[0.3em] uppercase">Scroll</span>
           <div
-            className="w-px h-10 origin-top"
+            className="w-px h-10 origin-top animate-pulse"
             style={{
               background: "linear-gradient(to bottom, var(--text-muted), transparent)",
-              animation: "scaleY 1.5s ease-in-out infinite",
             }}
           />
         </div>

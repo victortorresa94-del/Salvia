@@ -92,7 +92,7 @@ export function CtaScene() {
       <div
         ref={sectionRef}
         className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden px-6 text-center"
-        style={{ background: "#080808" }}
+        style={{ background: "transparent" }}
       >
         {/* Expanding light bg */}
         <div

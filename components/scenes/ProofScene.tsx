@@ -88,7 +88,7 @@ export function ProofScene() {
       <div
         ref={sectionRef}
         className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden px-6"
-        style={{ background: "#080808" }}
+        style={{ background: "transparent" }}
       >
         {/* Decorative gradient */}
         <div

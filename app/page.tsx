@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import dynamic from "next/dynamic";
+import { ScrollProvider } from "@/components/scroll/ScrollContext";
 import { SmoothScroll } from "@/components/scroll/SmoothScroll";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { Navigation } from "@/components/ui/Navigation";
@@ -10,32 +12,34 @@ import { SolutionScene } from "@/components/scenes/SolutionScene";
 import { ProofScene } from "@/components/scenes/ProofScene";
 import { CtaScene } from "@/components/scenes/CtaScene";
 
+const WebGLCanvas = dynamic(
+  () => import("@/components/webgl/WebGLCanvas").then((m) => m.WebGLCanvas),
+  { ssr: false }
+);
+
 export default function Home() {
-  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [experienceReady, setExperienceReady] = useState(false);
+
+  const handleWebGLReady = useCallback(() => {
+    // WebGL first frame fired — begin final progress ramp
+    setProgress(0.6);
+    setTimeout(() => setProgress(1), 800);
+  }, []);
 
   const handleLoadingComplete = useCallback(() => {
     setExperienceReady(true);
   }, []);
 
-  // Simulate asset loading (replace with real preloader progress)
-  useState(() => {
-    let p = 0;
-    const interval = setInterval(() => {
-      p += Math.random() * 0.08 + 0.02;
-      if (p >= 1) {
-        p = 1;
-        clearInterval(interval);
-      }
-      setLoadingProgress(p);
-    }, 60);
-    return () => clearInterval(interval);
-  });
-
   return (
-    <>
-      <LoadingScreen progress={loadingProgress} onComplete={handleLoadingComplete} />
+    <ScrollProvider>
+      {/* Layer 0: fixed WebGL canvas, always mounted */}
+      <WebGLCanvas onReady={handleWebGLReady} />
 
+      {/* Layer 1: loading screen (slides away on complete) */}
+      <LoadingScreen progress={progress} onComplete={handleLoadingComplete} />
+
+      {/* Layer 2: DOM content */}
       {experienceReady && (
         <SmoothScroll>
           <Navigation />
@@ -48,6 +52,6 @@ export default function Home() {
           </main>
         </SmoothScroll>
       )}
-    </>
+    </ScrollProvider>
   );
 }
