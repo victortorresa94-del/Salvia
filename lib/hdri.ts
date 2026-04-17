@@ -1,8 +1,10 @@
+// drei Environment presets — no local files needed, served from drei CDN
+// Swap to local paths once /public/hdri/ has valid .hdr files
 export const HDRI = {
-  hero: "/hdri/kloppenheim_06_puresky.hdr",
-  growth: "/hdri/rural_landscape.hdr",
-  underground: "/hdri/dikhololo_night.hdr",
-  harvest: "/hdri/autumn_field.hdr",
+  hero:        { preset: "dawn"   } as const,
+  growth:      { preset: "park"   } as const,
+  underground: { preset: "night"  } as const,
+  harvest:     { preset: "sunset" } as const,
 } as const;
 
 export type HdriKey = keyof typeof HDRI;

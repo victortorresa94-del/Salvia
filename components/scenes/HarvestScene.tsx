@@ -170,7 +170,7 @@ function HarvestSceneInner() {
     <group ref={groupRef}>
       {/* ── Environment IBL: autumn_field para luz dorada cálida de cosecha ─ */}
       <Environment
-        files={HDRI.harvest}
+        preset={HDRI.harvest.preset}
         environmentIntensity={1.0}
         blur={0.2}
       />

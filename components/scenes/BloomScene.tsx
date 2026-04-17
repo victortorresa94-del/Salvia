@@ -163,7 +163,7 @@ function BloomSceneInner() {
     <group ref={groupRef}>
       {/* ── Environment IBL — warm autumn golden light ───────────────────── */}
       <Environment
-        files={HDRI.harvest}
+        preset={HDRI.harvest.preset}
         blur={0.2}
         environmentIntensity={1.2}
       />

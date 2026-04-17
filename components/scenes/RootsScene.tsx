@@ -222,7 +222,7 @@ function RootsSceneInner() {
       <fog attach="fog" color="#0e0a08" near={3} far={12} />
 
       {/* Environment IBL — dikhololo_night for underground feel */}
-      <Environment files={HDRI.underground} environmentIntensity={0.3} />
+      <Environment preset={HDRI.underground.preset} environmentIntensity={0.3} />
 
       {/* Very dim ambient — avoids pure black, per scene spec */}
       <ambientLight intensity={0.05} color="#2a1a0e" />

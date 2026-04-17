@@ -255,7 +255,7 @@ function SoilSceneInner() {
     <group ref={groupRef}>
       {/* ── IBL environment: dikhololo_night.hdr, attenuated for dim mood ─── */}
       <Environment
-        files={HDRI.underground}
+        preset={HDRI.underground.preset}
         environmentIntensity={0.4}
         background={false}
       />

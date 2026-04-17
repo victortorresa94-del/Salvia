@@ -165,7 +165,7 @@ function SeedSceneInner() {
   return (
     <group ref={groupRef}>
       {/* ── Environment IBL ──────────────────────────────────────────────── */}
-      <Environment files={HDRI.hero} blur={0.3} />
+      <Environment preset={HDRI.hero.preset} blur={0.3} />
 
       {/* ── Cenital SpotLight ─────────────────────────────────────────────── */}
       <spotLight
