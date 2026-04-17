@@ -21,10 +21,9 @@
 
 import { useRef, useState, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html, Environment } from "@react-three/drei";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 
-import { HDRI } from "@/lib/hdri";
 import { FresnelNode } from "@/components/shaders/fresnelNode";
 import { useScrollContext } from "@/components/scroll/ScrollContext";
 
@@ -220,9 +219,6 @@ function RootsSceneInner() {
     <group ref={groupRef}>
       {/* Fog — underground atmosphere */}
       <fog attach="fog" color="#0e0a08" near={3} far={12} />
-
-      {/* Environment IBL — dikhololo_night for underground feel */}
-      <Environment preset={HDRI.underground.preset} environmentIntensity={0.3} />
 
       {/* Very dim ambient — avoids pure black, per scene spec */}
       <ambientLight intensity={0.05} color="#2a1a0e" />

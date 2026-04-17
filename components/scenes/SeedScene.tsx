@@ -21,12 +21,11 @@
 
 import { useRef, useEffect, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useGLTF, Environment, ContactShadows } from "@react-three/drei";
+import { useGLTF, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import type { GLTF } from "three-stdlib";
 
 import { MODELS } from "@/lib/models";
-import { HDRI } from "@/lib/hdri";
 import { PolenParticles } from "@/components/shaders/polenParticles";
 import { useScrollContext } from "@/components/scroll/ScrollContext";
 
@@ -164,9 +163,6 @@ function SeedSceneInner() {
 
   return (
     <group ref={groupRef}>
-      {/* ── Environment IBL ──────────────────────────────────────────────── */}
-      <Environment preset={HDRI.hero.preset} blur={0.3} />
-
       {/* ── Cenital SpotLight ─────────────────────────────────────────────── */}
       <spotLight
         ref={spotRef}

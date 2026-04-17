@@ -24,7 +24,6 @@ import React, { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   useGLTF,
-  Environment,
   ContactShadows,
   useTexture,
 } from "@react-three/drei";
@@ -32,7 +31,6 @@ import * as THREE from "three";
 import type { GLTF } from "three-stdlib";
 
 import { MODELS } from "@/lib/models";
-import { HDRI } from "@/lib/hdri";
 import { WiltingMaterial } from "@/components/shaders/wiltingMaterial";
 import { useScrollContext } from "@/components/scroll/ScrollContext";
 
@@ -253,13 +251,6 @@ function SoilSceneInner() {
 
   return (
     <group ref={groupRef}>
-      {/* ── IBL environment: dikhololo_night.hdr, attenuated for dim mood ─── */}
-      <Environment
-        preset={HDRI.underground.preset}
-        environmentIntensity={0.4}
-        background={false}
-      />
-
       {/* ── Dim ambient: barely enough to preserve shadow detail ──────────── */}
       <ambientLight intensity={0.15} />
 

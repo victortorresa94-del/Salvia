@@ -30,12 +30,11 @@
 
 import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useGLTF, Environment, ContactShadows } from "@react-three/drei";
+import { useGLTF, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import type { GLTF } from "three-stdlib";
 
 import { MODELS } from "@/lib/models";
-import { HDRI } from "@/lib/hdri";
 import { BloomingMaterial } from "@/components/shaders/bloomingMaterial";
 import { useScrollContext } from "@/components/scroll/ScrollContext";
 
@@ -161,13 +160,6 @@ function BloomSceneInner() {
 
   return (
     <group ref={groupRef}>
-      {/* ── Environment IBL — warm autumn golden light ───────────────────── */}
-      <Environment
-        preset={HDRI.harvest.preset}
-        blur={0.2}
-        environmentIntensity={1.2}
-      />
-
       {/* ── Warm directional key light ────────────────────────────────────── */}
       <directionalLight
         position={[3, 4, 2]}

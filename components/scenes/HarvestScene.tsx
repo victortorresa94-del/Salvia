@@ -20,12 +20,11 @@
 
 import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useGLTF, Environment, ContactShadows } from "@react-three/drei";
+import { useGLTF, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import type { GLTF } from "three-stdlib";
 
 import { MODELS } from "@/lib/models";
-import { HDRI } from "@/lib/hdri";
 import { useScrollContext } from "@/components/scroll/ScrollContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -168,13 +167,6 @@ function HarvestSceneInner() {
 
   return (
     <group ref={groupRef}>
-      {/* ── Environment IBL: autumn_field para luz dorada cálida de cosecha ─ */}
-      <Environment
-        preset={HDRI.harvest.preset}
-        environmentIntensity={1.0}
-        blur={0.2}
-      />
-
       {/* ── Luz cenital cálida dorada que realza el patrón top-down ─────── */}
       <directionalLight
         position={[2, 8, 3]}
