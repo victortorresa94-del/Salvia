@@ -1,3 +1,16 @@
+"use client";
+
+import dynamic from "next/dynamic";
+
+const SegaViewer = dynamic(() => import("@/components/lab/SegaViewer"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#6e6b63", fontFamily: "monospace", fontSize: "0.7rem" }}>
+      Cargando modelo…
+    </div>
+  ),
+});
+
 export default function LabPage() {
   return (
     <main
@@ -8,7 +21,6 @@ export default function LabPage() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
         padding: "4rem 2rem",
         fontFamily: "var(--font-body), sans-serif",
       }}
@@ -32,7 +44,7 @@ export default function LabPage() {
           fontWeight: 300,
           fontSize: "clamp(1.8rem, 4vw, 3rem)",
           color: "var(--text)",
-          marginBottom: "3rem",
+          marginBottom: "4rem",
           letterSpacing: "-0.01em",
           textAlign: "center",
         }}
@@ -43,13 +55,58 @@ export default function LabPage() {
       <div
         style={{
           width: "100%",
-          maxWidth: "900px",
+          maxWidth: "960px",
           display: "flex",
           flexDirection: "column",
           gap: "3rem",
         }}
       >
-        {/* Sketchfab embed */}
+        {/* ── Sega Master System — visor Three.js ──────────────────────────── */}
+        <section
+          style={{
+            border: "1px solid var(--stroke)",
+            borderRadius: "4px",
+            overflow: "hidden",
+            background: "var(--bg-soil)",
+          }}
+        >
+          <div
+            style={{
+              padding: "1.25rem 1.5rem",
+              borderBottom: "1px solid var(--stroke)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "0.6rem",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "var(--accent-gold)",
+              }}
+            >
+              3D / GLB local
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-body), sans-serif",
+                fontSize: "0.85rem",
+                color: "var(--text-muted)",
+              }}
+            >
+              Sega Master System
+            </span>
+          </div>
+
+          <div style={{ width: "100%", height: "520px" }}>
+            <SegaViewer />
+          </div>
+        </section>
+
+        {/* ── DENDY JUNIOR — embed Sketchfab ───────────────────────────────── */}
         <section
           style={{
             border: "1px solid var(--stroke)",
