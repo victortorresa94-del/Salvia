@@ -2,8 +2,8 @@
 
 import dynamic from "next/dynamic";
 
-const HeroDendy = dynamic(() => import("@/components/heroes/HeroDendy"), { ssr: false });
-const HeroSega  = dynamic(() => import("@/components/heroes/HeroSega"),  { ssr: false });
+const HeroAether = dynamic(() => import("@/components/heroes/HeroAether"), { ssr: false });
+const HeroSega   = dynamic(() => import("@/components/heroes/HeroSega"),   { ssr: false });
 
 // ─── Shared text overlay ──────────────────────────────────────────────────────
 
@@ -104,16 +104,16 @@ export default function HeroesPage() {
   return (
     <main style={{ background: "#0a0d0a" }}>
 
-      {/* ── Hero A — Planta / Salvia ────────────────────────────────────── */}
+      {/* ── Hero A — Material editado / Aether Labs ───────────────────── */}
       <HeroSlot
-        label="Hero A · DENDY JUNIOR"
+        label="Hero A · Material edit — clearcoat + rim"
         tag="Salvia — Sistema de generación de leads"
         headline={"No vendemos\nsoftware.\nSembramos ventas."}
         sub="Un sistema vivo que cultiva leads cualificados para tu empresa. Sin setup. Sin cuota. Cobramos solo cuando cierras."
         accent="#87a878"
-        bg="#0a0d0a"
+        bg="#080b10"
       >
-        <HeroDendy />
+        <HeroAether />
       </HeroSlot>
 
       {/* ── Hero B — Sega / Retro ───────────────────────────────────────── */}
