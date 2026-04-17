@@ -226,7 +226,7 @@ function SeedSceneInner() {
       <PolenParticles
         count={600}
         radius={1.5}
-        scrollProgress={progressRef.current}
+        scrollProgress={progressRef}
         offset={[2.2, 0.3, -0.5]}
         mouseRef={mouseRef}
         mouseStrength={1.0}

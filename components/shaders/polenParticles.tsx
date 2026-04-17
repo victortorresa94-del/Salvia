@@ -143,7 +143,12 @@ declare module "@react-three/fiber" {
 export interface PolenParticlesProps {
   count?:          number;
   radius?:         number;
-  scrollProgress?: number;
+  /**
+   * Scroll progress [0,1]. Accept either a plain number (static/reactive prop)
+   * or a MutableRefObject<number> that is updated every frame without causing
+   * React re-renders (preferred for scroll-driven animation).
+   */
+  scrollProgress?: number | React.MutableRefObject<number>;
   /** World-space offset applied to the <points> group. Defaults to [0,0,0]. */
   offset?:         [number, number, number];
   /** Ref to current mouse NDC coords, updated externally via mousemove. */
@@ -187,8 +192,16 @@ export function PolenParticles({
   useFrame(({ clock }) => {
     if (!matRef.current) return;
 
-    matRef.current.uniforms.uTime.value          = clock.elapsedTime;
-    matRef.current.uniforms.uScrollProgress.value = scrollProgress;
+    // Read scroll progress from ref (live, no re-render cost) or plain number
+    const sp =
+      scrollProgress !== null &&
+      typeof scrollProgress === "object" &&
+      "current" in scrollProgress
+        ? (scrollProgress as React.MutableRefObject<number>).current
+        : (scrollProgress as number);
+
+    matRef.current.uniforms.uTime.value           = clock.elapsedTime;
+    matRef.current.uniforms.uScrollProgress.value = sp;
     matRef.current.uniforms.uMouseStrength.value  = mouseStrength;
 
     // Sync mouse NDC from external ref if provided
