@@ -1,19 +1,10 @@
 # BLOCKERS
 
-## B01 — plant_fejka.glb (CRÍTICO para producción, dev usa placeholder)
+## B01 — Modelo 3D planta ✅ RESUELTO
 
-**Descripción:** El modelo 3D de la planta no está en `public/models/`.
-
-**Asset:** "I KEA_FEJKA Planta Artificial" por Roberto Domínguez
-**URL:** https://sketchfab.com/3d-models/i-kea-fejka-planta-artificial-d7403cd19c1f4955802b0f57cb2b249d
-
-**Cómo resolverlo:**
-1. Ir a la URL e iniciar sesión en Sketchfab
-2. Clic en "Download 3D Model" → formato GLB
-3. Guardar como `/home/user/Salvia/public/models/plant_fejka.glb`
-4. En `lib/models.ts`, cambiar `PLANT` de `avocado_demo.glb` a `plant_fejka.glb`
-
-**Estado:** El código usa `avocado_demo.glb` como placeholder. Build funciona, visualmente incorrecto hasta que se sustituya.
+**Asset:** "iKEA_DYPSIS LUTESCENS Planta" subido por el usuario
+**Ruta activa:** `public/models/plant.glb` (renombrado desde nombre con espacios)
+**Estado:** `lib/models.ts` apunta a `/models/plant.glb`. Todas las escenas lo cargan.
 
 ---
 
