@@ -8,15 +8,17 @@
  *
  * Behaviours:
  * - Plant model loaded via useGLTF (Draco) from MODELS.plant
- * - SpotLight cenital: position [0,6,2], intensity 50, angle 0.3, penumbra 0.5
+ * - SpotLight cenital: position [0,6,2], intensity 50, angle 0.3, penumbra 0.8
  * - Environment IBL: HDRI.hero (kloppenheim_06_puresky.hdr)
  * - ContactShadows: blur 2, opacity 0.4, scale 4
- * - PolenParticles (600 instances, curl noise, gold emissive)
- * - Scroll: plant gently scales up [1.0 → 1.15] as localProgress goes 0 → 1
+ * - PolenParticles (600 instances, curl noise, gold additive) — offset to right
+ * - Scroll emergence: plant starts at y=-3.5 (scroll=0) and rises to y=-0.8
+ *   as scroll goes 0→0.12 (smoothstep easing)
+ * - Scale: starts at 0.4, grows to 1.0 as scroll goes 0→0.15
+ * - Mouse tracking: updates mouseRef for PolenParticles interaction
  * - Group visibility fades out when scroll exits range [0.0, 0.22]
  * - MeshPhysicalMaterial override: clearcoat 0.3, roughness 0.4
- * - PerformanceMonitor for adaptive DPR (owned by GlobalCanvas, but scene
- *   is compatible with it)
+ * - PerformanceMonitor for adaptive DPR (owned by GlobalCanvas)
  */
 
 import { useRef, useEffect, useMemo } from "react";
@@ -47,6 +49,11 @@ function inverseLerp(min: number, max: number, value: number): number {
   return Math.max(0, Math.min(1, (value - min) / (max - min)));
 }
 
+/** Smoothstep easing for a value already in [0, 1]. */
+function smoothstep(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
 // ─── Inner scene (rendered inside R3F context) ────────────────────────────────
 
 function SeedSceneInner() {
@@ -60,10 +67,27 @@ function SeedSceneInner() {
   };
 
   // ── Refs ───────────────────────────────────────────────────────────────────
-  const groupRef = useRef<THREE.Group>(null);
-  const plantRef = useRef<THREE.Group>(null);
-  const spotRef = useRef<THREE.SpotLight>(null);
-  const spotTargetRef = useRef<THREE.Object3D>(null);
+  const groupRef       = useRef<THREE.Group>(null);
+  const plantRef       = useRef<THREE.Group>(null);
+  const spotRef        = useRef<THREE.SpotLight>(null);
+  const spotTargetRef  = useRef<THREE.Object3D>(null);
+
+  /**
+   * Mouse NDC coords updated by DOM mousemove listener.
+   * Passed to PolenParticles for the push interaction.
+   */
+  const mouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // ── Mouse tracking ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    function handleMouseMove(e: MouseEvent) {
+      // Convert to NDC [-1, 1]
+      mouseRef.current.x =  (e.clientX / window.innerWidth)  * 2 - 1;
+      mouseRef.current.y = -((e.clientY / window.innerHeight) * 2 - 1);
+    }
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   // ── PBR material override ──────────────────────────────────────────────────
   // Applied once after load; respects existing textures on the model.
@@ -73,37 +97,39 @@ function SeedSceneInner() {
     clone.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
 
-      const existing = child.material as THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
+      const existing = child.material as
+        | THREE.MeshStandardMaterial
+        | THREE.MeshPhysicalMaterial;
 
       // Preserve existing maps; upgrade to MeshPhysicalMaterial for clearcoat.
       const upgraded = new THREE.MeshPhysicalMaterial({
-        map: existing.map ?? null,
-        normalMap: existing.normalMap ?? null,
-        roughnessMap: existing.roughnessMap ?? null,
-        metalnessMap: existing.metalnessMap ?? null,
-        aoMap: existing.aoMap ?? null,
-        emissiveMap: existing.emissiveMap ?? null,
-        emissive: existing.emissive ?? new THREE.Color(0x000000),
+        map:              existing.map            ?? null,
+        normalMap:        existing.normalMap      ?? null,
+        roughnessMap:     existing.roughnessMap   ?? null,
+        metalnessMap:     existing.metalnessMap   ?? null,
+        aoMap:            existing.aoMap          ?? null,
+        emissiveMap:      existing.emissiveMap    ?? null,
+        emissive:         existing.emissive       ?? new THREE.Color(0x000000),
         emissiveIntensity: existing.emissiveIntensity ?? 0,
-        color: existing.color ?? new THREE.Color(0xffffff),
-        roughness: 0.4,
-        metalness: (existing as THREE.MeshStandardMaterial).metalness ?? 0,
-        clearcoat: 0.3,
+        color:            existing.color          ?? new THREE.Color(0xffffff),
+        roughness:        0.4,
+        metalness:        (existing as THREE.MeshStandardMaterial).metalness ?? 0,
+        clearcoat:        0.3,
         clearcoatRoughness: 0.25,
-        // Translucency for leaf-like meshes (no-op if no thickness)
-        transmission: 0.0,
-        side: existing.side,
+        // Translucency for leaf-like meshes (no-op if no thickness map)
+        transmission:     0.0,
+        side:             existing.side,
       });
 
-      child.material = upgraded;
-      child.castShadow = true;
+      child.material     = upgraded;
+      child.castShadow   = true;
       child.receiveShadow = true;
     });
 
     return clone;
   }, [gltf.scene]);
 
-  // ── Spotlight target must be added to scene ───────────────────────────────
+  // ── Spotlight target must be added to scene ────────────────────────────────
   useEffect(() => {
     if (spotRef.current && spotTargetRef.current) {
       spotRef.current.target = spotTargetRef.current;
@@ -114,31 +140,34 @@ function SeedSceneInner() {
   useFrame(({ clock }) => {
     const raw = progressRef.current;
 
-    // localProgress: 0→1 as global scroll moves from 0→0.20
-    const localProgress = inverseLerp(0.0, 0.20, raw);
-
-    // Scene visibility: active in [0.0, 0.22], fade buffer 0.05 on exit
+    // Scene visibility: active in [0.0, 0.22]
     const visible = raw <= 0.22;
     if (groupRef.current) {
       groupRef.current.visible = visible;
     }
-
     if (!visible) return;
 
-    // Fade-out opacity near upper bound
+    // Fade-out opacity near upper bound [0.17 → 0.22]
     const opacityFactor =
       raw > 0.17 ? inverseLerp(0.22, 0.17, raw) : 1.0;
 
-    // Plant: slow idle rotation + subtle bob
     if (plantRef.current) {
       const t = clock.elapsedTime;
-      plantRef.current.rotation.y = t * 0.08;
-      plantRef.current.position.y =
-        Math.sin(t * 0.4) * 0.04 - 0.5; // float around y=-0.5
 
-      // Scale grows slightly as user scrolls in
-      const scale = 1.0 + localProgress * 0.15;
+      // ── Emergence from below: y = -3.5 → -0.8 as scroll 0 → 0.12 ──────
+      const emergeT    = smoothstep(inverseLerp(0.0, 0.12, raw));
+      const targetY    = -3.5 + emergeT * (-0.8 - -3.5); // -3.5 → -0.8
+      // Add gentle idle bob on top of the emerged position
+      const idleBob    = Math.sin(t * 0.4) * 0.04;
+      plantRef.current.position.y = targetY + idleBob;
+
+      // ── Scale: 0.4 → 1.0 as scroll 0 → 0.15 ────────────────────────────
+      const scaleT  = smoothstep(inverseLerp(0.0, 0.15, raw));
+      const scale   = 0.4 + scaleT * (1.0 - 0.4);
       plantRef.current.scale.setScalar(scale);
+
+      // Slow idle rotation
+      plantRef.current.rotation.y = t * 0.08;
     }
 
     // Fade meshes with opacityFactor if approaching scene boundary
@@ -146,20 +175,12 @@ function SeedSceneInner() {
       plantRef.current.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           const mat = child.material as THREE.MeshPhysicalMaterial;
-          if (!mat.transparent) {
-            mat.transparent = true;
-          }
+          if (!mat.transparent) mat.transparent = true;
           mat.opacity = opacityFactor;
         }
       });
     }
   });
-
-  // ── Pollen scroll progress (read from ref in PolenParticles' own useFrame) ─
-  // We pass a derived local value; PolenParticles reads scrollProgress prop
-  // for its uniforms — we supply the raw global value so curl noise fades
-  // correctly as scene leaves.
-  const scrollProgressForPolen = progressRef.current;
 
   return (
     <group ref={groupRef}>
@@ -169,7 +190,7 @@ function SeedSceneInner() {
         position={[0, 6, 2]}
         intensity={50}
         angle={0.3}
-        penumbra={0.5}
+        penumbra={0.8}
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.001}
@@ -188,20 +209,27 @@ function SeedSceneInner() {
       />
 
       {/* ── Plant model ───────────────────────────────────────────────────── */}
-      <group ref={plantRef} position={[0, -0.5, 0]}>
+      {/*
+       * plantRef starts at y=-3.5 (below camera) and rises to y=-0.8 as
+       * scroll goes 0→0.12. Scale grows from 0.4→1.0 as scroll goes 0→0.15.
+       * Initial position/scale set to scroll=0 state; useFrame drives animation.
+       */}
+      <group ref={plantRef} position={[0, -3.5, 0]} scale={0.4}>
         <primitive object={plantScene} />
       </group>
 
-      {/* ── Pollen particles (600 instances, curl noise, gold additive) ───── */}
+      {/* ── Pollen particles ──────────────────────────────────────────────── */}
       {/*
-       * PolenParticles reads scrollProgress to fade its alpha and curl
-       * intensity. We provide the raw global progress so the shader knows
-       * how far the scene has been scrolled past.
+       * Offset to the right side of the scene [2.2, 0.3, -0.5].
+       * mouseRef drives the push interaction uniform uMouse.
        */}
       <PolenParticles
         count={600}
         radius={1.5}
-        scrollProgress={scrollProgressForPolen}
+        scrollProgress={progressRef.current}
+        offset={[2.2, 0.3, -0.5]}
+        mouseRef={mouseRef}
+        mouseStrength={1.0}
       />
 
       {/* ── Contact shadows ───────────────────────────────────────────────── */}
@@ -224,7 +252,9 @@ function SeedSceneInner() {
  * SeedScene — hero scene "La semilla".
  * Must be rendered inside the global R3F Canvas (never mounts its own Canvas).
  */
-export function SeedScene({ scrollProgress: _scrollProgressProp }: SeedSceneProps = {}) {
+export function SeedScene({
+  scrollProgress: _scrollProgressProp,
+}: SeedSceneProps = {}) {
   return <SeedSceneInner />;
 }
 
