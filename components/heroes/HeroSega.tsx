@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useMemo, Suspense, Component, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useGLTF, ContactShadows, Environment } from "@react-three/drei";
+import { useGLTF, Environment } from "@react-three/drei";
 import * as THREE from "three";
 
 useGLTF.preload("/models/sega_master_system.glb");
@@ -32,15 +32,17 @@ function useMouse() {
 
 // ─── Scroll zoom ──────────────────────────────────────────────────────────────
 
-function useScrollZoom() {
+function useScrollZoom(target: React.RefObject<HTMLDivElement>) {
   const zoomRef = useRef(0);
   useEffect(() => {
+    const el = target.current;
+    if (!el) return;
     const h = (e: WheelEvent) => {
       zoomRef.current = Math.max(-1.5, Math.min(1.5, zoomRef.current + e.deltaY * 0.001));
     };
-    window.addEventListener("wheel", h, { passive: true });
-    return () => window.removeEventListener("wheel", h);
-  }, []);
+    el.addEventListener("wheel", h, { passive: true });
+    return () => el.removeEventListener("wheel", h);
+  }, [target]);
   return zoomRef;
 }
 
@@ -55,11 +57,11 @@ function Camera({
 }) {
   const { camera } = useThree();
   useFrame(() => {
-    const targetZ = 3.5 + zoom.current;
+    const targetZ = 2.5 + zoom.current;
     camera.position.x += (mouse.current.x * 1.0 - camera.position.x) * 0.05;
     camera.position.y += (mouse.current.y * 0.5 + 0.3 - camera.position.y) * 0.05;
     camera.position.z += (targetZ - camera.position.z) * 0.05;
-    camera.lookAt(0, 0.1, 0);
+    camera.lookAt(0, 0, 0);
   });
   return null;
 }
@@ -75,7 +77,7 @@ function SegaModel({ mouse }: { mouse: React.MutableRefObject<{ x: number; y: nu
     const box = new THREE.Box3().setFromObject(clone);
     const size = box.getSize(new THREE.Vector3());
     const centre = box.getCenter(new THREE.Vector3());
-    const s = 1.8 / Math.max(size.x, size.y, size.z);
+    const s = 4.5 / Math.max(size.x, size.y, size.z);
     clone.scale.setScalar(s);
     clone.position.set(-centre.x * s, -centre.y * s, -centre.z * s);
     clone.traverse((c) => { if (c instanceof THREE.Mesh) { c.castShadow = true; c.receiveShadow = true; } });
@@ -115,9 +117,9 @@ function SegaFallback() {
 
 // ─── Scene ────────────────────────────────────────────────────────────────────
 
-function Scene() {
+function Scene({ scrollTarget }: { scrollTarget: React.RefObject<HTMLDivElement> }) {
   const mouse = useMouse();
-  const zoom = useScrollZoom();
+  const zoom = useScrollZoom(scrollTarget);
 
   return (
     <>
@@ -136,8 +138,6 @@ function Scene() {
           <SegaModel mouse={mouse} />
         </Suspense>
       </Catch>
-
-      <ContactShadows position={[0, -1.0, 0]} blur={3} opacity={0.5} scale={6} far={2} color="#0a0500" />
     </>
   );
 }
@@ -145,14 +145,12 @@ function Scene() {
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export default function HeroSega() {
+  const containerRef = useRef<HTMLDivElement>(null);
   return (
-    <Canvas
-      camera={{ position: [0, 0.3, 3.5], fov: 50 }}
-      gl={{ antialias: true, alpha: true }}
-      style={{ width: "100%", height: "100%" }}
-      shadows
-    >
-      <Scene />
-    </Canvas>
+    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+      <Canvas camera={{ position: [0, 0.15, 2.5], fov: 52 }} gl={{ antialias: true, alpha: true }} style={{ width: "100%", height: "100%" }}>
+        <Scene scrollTarget={containerRef} />
+      </Canvas>
+    </div>
   );
 }
