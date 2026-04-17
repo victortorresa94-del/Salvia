@@ -1,79 +1,69 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { gsap, ScrollTrigger } from "@/lib/gsap";
+import { useEffect, useRef, type ReactNode, createElement } from "react";
+import SplitType from "split-type";
+import { gsap } from "@/lib/gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+type HTMLTag = keyof Pick<
+  JSX.IntrinsicElements,
+  "div" | "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "span" | "section"
+>;
 
 interface SplitTextProps {
-  children: string;
+  children: ReactNode;
+  as?: HTMLTag;
   className?: string;
-  tag?: keyof JSX.IntrinsicElements;
-  animation?: "words" | "chars" | "lines";
-  stagger?: number;
+  type?: "words" | "chars" | "lines";
   delay?: number;
-  triggerRef?: React.RefObject<HTMLElement>;
-  start?: string;
+  style?: React.CSSProperties;
 }
 
 export function SplitText({
   children,
-  className = "",
-  tag: Tag = "h2",
-  animation = "words",
-  stagger = 0.08,
+  as: tag = "div",
+  className,
+  type = "words",
   delay = 0,
-  triggerRef,
-  start = "top 80%",
+  style,
 }: SplitTextProps) {
-  const containerRef = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+    if (!ref.current) return;
 
-    const text = children;
-    const units =
-      animation === "chars"
-        ? text.split("")
-        : animation === "words"
-        ? text.split(" ")
-        : text.split("\n");
+    const split = new SplitType(ref.current, { types: type });
+    const targets =
+      type === "chars"
+        ? split.chars
+        : type === "lines"
+          ? split.lines
+          : split.words;
 
-    el.innerHTML = units
-      .map((unit, i) => {
-        const spacer = animation === "words" && i < units.length - 1 ? " " : "";
-        return `<span class="split-unit" style="display:inline-block;overflow:hidden;vertical-align:bottom"><span class="split-inner" style="display:inline-block;transform:translateY(110%)">${unit}</span></span>${spacer}`;
-      })
-      .join("");
+    if (!targets?.length) return;
 
-    const inners = el.querySelectorAll(".split-inner");
-
-    const tl = gsap.fromTo(
-      inners,
-      { y: "110%" },
+    gsap.fromTo(
+      targets,
+      { opacity: 0, y: 20 },
       {
-        y: "0%",
-        duration: 1,
-        ease: "power3.out",
-        stagger,
+        opacity: 1,
+        y: 0,
+        duration: 0.7,
+        stagger: 0.04,
+        ease: "power2.out",
         delay,
         scrollTrigger: {
-          trigger: triggerRef?.current ?? el,
-          start,
-          toggleActions: "play none none reverse",
+          trigger: ref.current,
+          start: "top 85%",
+          once: true,
         },
       }
     );
 
     return () => {
-      tl.kill();
-      el.innerHTML = text;
+      split.revert();
     };
-  }, [children, animation, stagger, delay, triggerRef, start]);
+  }, [type, delay]);
 
-  return (
-    // @ts-expect-error dynamic tag
-    <Tag ref={containerRef} className={className}>
-      {children}
-    </Tag>
-  );
+  return createElement(tag, { ref, className, style }, children);
 }

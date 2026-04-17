@@ -1,45 +1,46 @@
 "use client";
 
-import { createContext, useContext, useRef, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useRef,
+  useState,
+  useEffect,
+  type MutableRefObject,
+  type ReactNode,
+} from "react";
+import { initLenis, destroyLenis } from "@/lib/lenis";
 
 interface ScrollContextValue {
   progress: number;
-  registerListener: (fn: (progress: number) => void) => () => void;
+  progressRef: MutableRefObject<number>;
 }
 
-export const ScrollContext = createContext<ScrollContextValue>({
+const ScrollContext = createContext<ScrollContextValue>({
   progress: 0,
-  registerListener: () => () => {},
+  progressRef: { current: 0 },
 });
 
-export function ScrollProvider({ children }: { children: React.ReactNode }) {
+export function ScrollProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState(0);
-  const listenersRef = useRef<Set<(p: number) => void>>(new Set());
-
-  const updateProgress = useCallback(() => {
-    const scrollTop = window.scrollY;
-    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-    const p = maxScroll > 0 ? Math.min(1, scrollTop / maxScroll) : 0;
-    setProgress(p);
-    listenersRef.current.forEach((fn) => fn(p));
-  }, []);
+  const progressRef = useRef(0);
 
   useEffect(() => {
-    window.addEventListener("scroll", updateProgress, { passive: true });
-    updateProgress();
-    return () => window.removeEventListener("scroll", updateProgress);
-  }, [updateProgress]);
+    initLenis((p: number) => {
+      progressRef.current = p;
+      setProgress(p);
+    });
 
-  const registerListener = useCallback((fn: (p: number) => void) => {
-    listenersRef.current.add(fn);
-    return () => listenersRef.current.delete(fn);
+    return () => destroyLenis();
   }, []);
 
   return (
-    <ScrollContext.Provider value={{ progress, registerListener }}>
+    <ScrollContext.Provider value={{ progress, progressRef }}>
       {children}
     </ScrollContext.Provider>
   );
 }
 
-export const useScrollContext = () => useContext(ScrollContext);
+export function useScrollContext() {
+  return useContext(ScrollContext);
+}

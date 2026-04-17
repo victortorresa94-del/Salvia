@@ -3,7 +3,7 @@ import { gsap, ScrollTrigger } from "./gsap";
 
 let lenis: Lenis | null = null;
 
-export function initLenis(): Lenis {
+export function initLenis(onScrollProgress?: (progress: number) => void): Lenis {
   lenis = new Lenis({
     duration: 1.2,
     easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
@@ -11,7 +11,10 @@ export function initLenis(): Lenis {
     smoothWheel: true,
   });
 
-  lenis.on("scroll", ScrollTrigger.update);
+  lenis.on("scroll", ({ progress }: { progress: number }) => {
+    ScrollTrigger.update();
+    onScrollProgress?.(progress);
+  });
 
   gsap.ticker.add((time: number) => {
     lenis!.raf(time * 1000);

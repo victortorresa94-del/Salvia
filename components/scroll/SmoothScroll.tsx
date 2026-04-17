@@ -1,17 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { initLenis, destroyLenis } from "@/lib/lenis";
+import type { ReactNode } from "react";
 
-interface SmoothScrollProps {
-  children: React.ReactNode;
-}
-
-export function SmoothScroll({ children }: SmoothScrollProps) {
-  useEffect(() => {
-    const lenis = initLenis();
-    return () => destroyLenis();
-  }, []);
-
-  return <>{children}</>;
+export function SmoothScroll({ children }: { children: ReactNode }) {
+  return <div data-lenis-wrapper>{children}</div>;
 }
