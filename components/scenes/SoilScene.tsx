@@ -38,11 +38,7 @@ import { useScrollContext } from "@/components/scroll/ScrollContext";
 
 // ─── Draco preload ─────────────────────────────────────────────────────────────
 
-useGLTF.preload(MODELS.plant, true, undefined, (loader) => {
-  (loader as unknown as { setDecoderPath: (p: string) => void }).setDecoderPath(
-    "/draco/"
-  );
-});
+useGLTF.preload(MODELS.plant, "/draco/");
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -171,7 +167,7 @@ interface WiltingPlantProps {
 }
 
 function WiltingPlant({ progressRef }: WiltingPlantProps) {
-  const gltf = useGLTF(MODELS.plant) as GLTF & {
+  const gltf = useGLTF(MODELS.plant, "/draco/") as GLTF & {
     scene: THREE.Group;
     nodes: Record<string, THREE.Mesh>;
     materials: Record<string, THREE.Material>;

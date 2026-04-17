@@ -39,12 +39,7 @@ export interface SeedSceneProps {
 
 // ─── Draco preload ────────────────────────────────────────────────────────────
 
-useGLTF.preload(MODELS.plant, true, undefined, (loader) => {
-  // Draco decoder lives in /public/draco/
-  (loader as unknown as { setDecoderPath: (p: string) => void }).setDecoderPath(
-    "/draco/"
-  );
-});
+useGLTF.preload(MODELS.plant, "/draco/");
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,7 +54,7 @@ function SeedSceneInner() {
   const { progressRef } = useScrollContext();
 
   // ── Model ──────────────────────────────────────────────────────────────────
-  const gltf = useGLTF(MODELS.plant) as GLTF & {
+  const gltf = useGLTF(MODELS.plant, "/draco/") as GLTF & {
     scene: THREE.Group;
     nodes: Record<string, THREE.Mesh>;
     materials: Record<string, THREE.Material>;
