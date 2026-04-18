@@ -1,0 +1,503 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useGLTF, ContactShadows } from '@react-three/drei'
+import * as THREE from 'three'
+
+function fixColorSpace(scene: THREE.Object3D) {
+  scene.traverse((child) => {
+    if (!(child as THREE.Mesh).isMesh) return
+    const mesh = child as THREE.Mesh
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    mats.forEach((mat) => {
+      if (!mat) return
+      const m = mat as THREE.MeshStandardMaterial
+      if (!m.isMeshStandardMaterial) return
+      if (m.map)         { m.map.colorSpace         = THREE.SRGBColorSpace; m.map.needsUpdate         = true }
+      if (m.emissiveMap) { m.emissiveMap.colorSpace  = THREE.SRGBColorSpace; m.emissiveMap.needsUpdate = true }
+      m.metalness = 0
+      m.envMapIntensity = 0.3
+      m.needsUpdate = true
+    })
+  })
+}
+
+type RoseProps = { containerRef: React.RefObject<HTMLDivElement>; onProgress: (p: number) => void }
+
+function Rose({ containerRef, onProgress }: RoseProps) {
+  const groupRef   = useRef<THREE.Group>(null)
+  const { scene }  = useGLTF('/red_rose_pbr.glb')
+  const { camera } = useThree()
+  const ready      = useRef(false)
+  const lastP      = useRef(0)
+
+  useEffect(() => {
+    if (ready.current) return
+    ready.current = true
+    const box     = new THREE.Box3().setFromObject(scene)
+    const center  = box.getCenter(new THREE.Vector3())
+    const size    = box.getSize(new THREE.Vector3())
+    const scale   = 3.2 / Math.max(size.x, size.y, size.z)
+    scene.scale.setScalar(scale)
+    scene.position.sub(center.multiplyScalar(scale))
+    fixColorSpace(scene)
+  }, [scene])
+
+  useFrame(() => {
+    if (!groupRef.current || !containerRef.current) return
+
+    const rect        = containerRef.current.getBoundingClientRect()
+    const totalScroll = containerRef.current.offsetHeight - window.innerHeight
+    const scrolled    = Math.max(0, -rect.top)
+    const p           = totalScroll > 0 ? Math.min(scrolled / totalScroll, 1) : 0
+
+    if (Math.abs(p - lastP.current) > 0.005) {
+      lastP.current = p
+      onProgress(p)
+    }
+
+    groupRef.current.rotation.y += 0.003
+
+    if (p < 0.3) {
+      const t = p / 0.3
+      const e = t * t * (3 - 2 * t)
+      groupRef.current.position.y = -5.0 + e * 5.0
+      groupRef.current.rotation.z = (1 - e) * 0.28
+      groupRef.current.scale.setScalar(0.6 + e * 0.4)
+    } else if (p < 0.6) {
+      const t = (p - 0.3) / 0.3
+      groupRef.current.position.y = t * 0.6
+      groupRef.current.rotation.z = 0
+      groupRef.current.scale.setScalar(1.0)
+    } else {
+      const t = (p - 0.6) / 0.4
+      groupRef.current.position.y = 0.6 + t * 1.2
+      groupRef.current.rotation.z = t * -0.12
+      groupRef.current.scale.setScalar(1.0 + t * 0.15)
+    }
+
+    const isMobile = window.innerWidth < 768
+    groupRef.current.position.x = isMobile ? 0 : 0.4
+
+    const targetX = isMobile ? Math.sin(p * Math.PI * 0.4) * 0.8 : -2.2 + Math.sin(p * Math.PI * 0.55) * 2.0
+    const targetY = 0.2 + p * 1.8
+    const targetZ = isMobile ? (8.0 - p * 3.5) : (7.5 - p * 4.0)
+    camera.position.x += (targetX - camera.position.x) * 0.05
+    camera.position.y += (targetY - camera.position.y) * 0.05
+    camera.position.z += (targetZ - camera.position.z) * 0.05
+    if (isMobile) {
+      camera.lookAt(0, groupRef.current.position.y * 0.3 + 0.2, 0)
+    } else {
+      camera.lookAt(0.3, 0.2, 0)
+    }
+  })
+
+  return (
+    <group ref={groupRef}>
+      <primitive object={scene} />
+    </group>
+  )
+}
+
+function Particles() {
+  const ref   = useRef<THREE.Points>(null)
+  const count = 160
+  const pos   = useRef((() => {
+    const a = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      a[i*3]   = (Math.random()-0.5)*9
+      a[i*3+1] = (Math.random()-0.5)*7
+      a[i*3+2] = (Math.random()-0.5)*5
+    }
+    return a
+  })())
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return
+    ref.current.rotation.y = clock.getElapsedTime() * 0.012
+    ref.current.rotation.x = Math.sin(clock.getElapsedTime() * 0.007) * 0.04
+  })
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[pos.current, 3]} count={count} itemSize={3} />
+      </bufferGeometry>
+      <pointsMaterial color="#ff9966" size={0.018} transparent opacity={0.45} depthWrite={false} sizeAttenuation />
+    </points>
+  )
+}
+
+function Scene({ containerRef, onProgress }: { containerRef: React.RefObject<HTMLDivElement>; onProgress: (p: number) => void }) {
+  return (
+    <>
+      <spotLight position={[-6, 10, 4]} angle={0.35} penumbra={0.7} intensity={9} color="#fff0cc" castShadow />
+      <pointLight position={[5, 1, -5]} intensity={1.8} color="#aaccff" distance={18} decay={2} />
+      <pointLight position={[3, -2, 3]} intensity={1.5} color="#ffaa55" distance={12} decay={2} />
+      <ambientLight intensity={0.55} color="#ffe8d0" />
+      <Rose containerRef={containerRef} onProgress={onProgress} />
+      <Particles />
+      <ContactShadows position={[0, -2.2, 0]} opacity={0.2} scale={6} blur={3} far={4} color="#001008" />
+    </>
+  )
+}
+
+interface TextScene { start: number; end: number; headline: string; body?: string }
+
+const SCENES: TextScene[] = [
+  { start: 0,    end: 0.28, headline: 'Tu próxima\nreunión\nde ventas.',     body: 'Sin montar el sistema. Sin pagar hasta ver resultados.' },
+  { start: 0.28, end: 0.55, headline: 'Sembramos\nleads cualificados.',      body: 'Claude orquesta email, Instagram, WhatsApp y llamadas en un pipeline unificado.' },
+  { start: 0.55, end: 0.82, headline: 'Nosotros\nplantamos.\nTú cosechas.',  body: 'Cobramos solo cuando cierras. Sin pipeline real, sin factura.' },
+  { start: 0.82, end: 1.01, headline: '¿Hay terreno\nfértil en tu\nempresa?' },
+]
+
+function getSceneState(progress: number) {
+  const active  = SCENES.find(s => progress >= s.start && progress < s.end) ?? SCENES[SCENES.length - 1]
+  const isFirst = active === SCENES[0]
+  const isLast  = active === SCENES[SCENES.length - 1]
+  const localP  = (active.end - active.start) > 0 ? (progress - active.start) / (active.end - active.start) : 0
+  const fadeIn  = isFirst ? 1 : Math.min(localP / 0.18, 1)
+  const fadeOut = (!isLast && localP > 0.8) ? 1 - (localP - 0.8) / 0.2 : 1
+  const opacity = fadeIn * fadeOut
+  const lift    = (1 - opacity) * 24
+  return { active, isFirst, isLast, localP, opacity, lift }
+}
+
+// SALVIA at z:3 (behind canvas/rose on desktop). Hidden on mobile via .hero-back-layer CSS.
+function SalviaBackLayer({ progress }: { progress: number }) {
+  const { isFirst, opacity, lift } = getSceneState(progress)
+  if (!isFirst) return null
+
+  return (
+    <div className="hero-back-layer" style={{
+      position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      paddingTop: 'clamp(50px,7vh,90px)',
+      opacity, transform: `translateY(${lift}px)`,
+    }}>
+      {/* Spacers matching front layer order: claim → sublabel → SALVIA */}
+      <p aria-hidden style={{
+        visibility: 'hidden', fontFamily: 'var(--font-cormorant)',
+        fontStyle: 'italic', fontWeight: 400,
+        fontSize: 'clamp(40px,5.5vw,80px)', lineHeight: 1.1,
+        whiteSpace: 'pre-line', textAlign: 'center',
+        margin: 0, marginBottom: 'clamp(10px,1.4vh,18px)',
+      }}>{'Vender debería\nser mucho más fácil.'}</p>
+      <p aria-hidden style={{
+        visibility: 'hidden', fontFamily: 'var(--font-sans)',
+        fontSize: 'clamp(9px,0.8vw,11px)', lineHeight: 1,
+        marginBottom: 'clamp(6px,1vh,12px)',
+      }}>·</p>
+
+      <h1 className="hero-back-salvia" style={{
+        fontFamily: 'var(--font-display)',
+        fontWeight: 400,
+        fontSize: 'clamp(80px,18vw,240px)',
+        lineHeight: 0.85,
+        letterSpacing: '0.04em',
+        color: '#f5f0ea',
+        textAlign: 'center',
+        margin: 0,
+        textShadow: '0 4px 60px rgba(0,0,0,0.7), 0 0 120px rgba(0,0,0,0.4)',
+      }}>
+        SALVIA
+      </h1>
+    </div>
+  )
+}
+
+function HoverScaleWrapper({ children }: { children: React.ReactNode }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <div
+      style={{ display:'inline-block', transition:'transform 0.2s', transform: hovered ? 'scale(1.05)' : 'scale(1)' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {children}
+    </div>
+  )
+}
+
+function TextOverlay({ progress }: { progress: number }) {
+  const { active, isFirst, isLast, opacity, lift } = getSceneState(progress)
+
+  const headlineStyle: React.CSSProperties = {
+    fontFamily:    'var(--font-serif)',
+    fontStyle:     'italic',
+    fontWeight:    400,
+    lineHeight:    0.93,
+    letterSpacing: '-0.032em',
+    color:         '#f5f0ea',
+    whiteSpace:    'pre-line',
+    margin:        0,
+    textShadow:    '0 2px 40px rgba(0,0,0,0.9), 0 0 80px rgba(0,0,0,0.5)',
+  }
+
+  if (isFirst) {
+    return (
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        paddingTop: 'clamp(50px,7vh,90px)',
+        opacity, transform: `translateY(${lift}px)`,
+      }}>
+        {/* 1. Claim — yellow-gold Cormorant italic (first) */}
+        <p style={{
+          fontFamily: 'var(--font-cormorant)',
+          fontStyle: 'italic',
+          fontWeight: 400,
+          fontSize: 'clamp(40px,5.5vw,80px)',
+          lineHeight: 1.1,
+          letterSpacing: '-0.02em',
+          color: '#e8d44d',
+          whiteSpace: 'pre-line',
+          textAlign: 'center',
+          margin: 0,
+          marginBottom: 'clamp(10px,1.4vh,18px)',
+          textShadow: '0 2px 40px rgba(0,0,0,0.7), 0 0 60px rgba(232,212,77,0.12)',
+        }}>
+          {'Vender debería\nser mucho más fácil.'}
+        </p>
+
+        {/* 2. Sub-label — micro caps, below claim */}
+        <p className="hero-sublabel" style={{
+          fontFamily: 'var(--font-sans)',
+          fontWeight: 300,
+          fontSize: 'clamp(9px,0.8vw,11px)',
+          letterSpacing: '0.32em',
+          textTransform: 'uppercase',
+          color: 'rgba(245,240,234,0.45)',
+          marginBottom: 'clamp(6px,1vh,12px)',
+          textAlign: 'center',
+          textShadow: '0 1px 20px rgba(0,0,0,0.8)',
+          lineHeight: 1,
+        }}>
+          para que no tengas que hacerlo tú, hemos creado
+        </p>
+
+        {/* 3a. SALVIA — invisible spacer on desktop (back layer handles it), visible on mobile */}
+        <h1 className="hero-salvia-spacer" aria-hidden style={{
+          visibility: 'hidden',
+          fontFamily: 'var(--font-display)',
+          fontWeight: 400,
+          fontSize: 'clamp(80px,18vw,240px)',
+          lineHeight: 0.85,
+          letterSpacing: '0.04em',
+          margin: 0,
+          pointerEvents: 'none',
+          userSelect: 'none',
+          color: '#f5f0ea',
+          textAlign: 'center',
+          textShadow: '0 4px 60px rgba(0,0,0,0.7)',
+        }}>
+          SALVIA
+        </h1>
+
+        {/* 4. Descriptor — more spacing, bigger */}
+        <p className="hero-descriptor" style={{
+          fontFamily: 'var(--font-cormorant)',
+          fontStyle: 'italic',
+          fontWeight: 300,
+          fontSize: 'clamp(14px,1.4vw,19px)',
+          color: 'rgba(245,240,234,0.5)',
+          letterSpacing: '0.04em',
+          marginTop: 'clamp(36px,5.5vh,64px)',
+          textAlign: 'center',
+          textShadow: '0 1px 20px rgba(0,0,0,0.8)',
+        }}>
+          sistema automatizado de leads &amp; ventas con inteligencia artificial
+        </p>
+      </div>
+    )
+  }
+
+  if (!isLast) {
+    const isSecond = active === SCENES[1]
+    return (
+      <div style={{
+        position:'absolute', inset:0, zIndex:10, pointerEvents:'none',
+        display:'flex', flexDirection:'column', justifyContent:'center',
+        alignItems: isSecond ? 'flex-end' : undefined,
+        paddingLeft:  isSecond ? undefined : 'clamp(28px,7vw,100px)',
+        paddingRight: isSecond ? 'clamp(28px,7vw,100px)' : undefined,
+        paddingBottom:'8vh',
+        opacity, transform:`translateY(${lift}px)`,
+      }}>
+        <div style={{ maxWidth:460 }}>
+          <h2 style={{ ...headlineStyle, fontSize:'clamp(28px,4.4vw,66px)', marginBottom:18, textAlign: isSecond ? 'right' : undefined }}>
+            {active.headline}
+          </h2>
+          {active.body && (
+            <p style={{ fontSize:'clamp(13px,1.3vw,16px)', color:'rgba(240,235,228,0.6)', lineHeight:1.7, maxWidth:360, textShadow:'0 1px 20px rgba(0,0,0,0.9)', fontFamily:'DM Sans,sans-serif', textAlign: isSecond ? 'right' : undefined }}>
+              {active.body}
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      position:'absolute', inset:0, zIndex:10, pointerEvents:'none',
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+      opacity, transform:`translateY(${lift}px)`,
+    }}>
+      <h2 style={{ ...headlineStyle, fontSize:'clamp(32px,5vw,74px)', textAlign:'center', marginBottom:36 }}>
+        {active.headline}
+      </h2>
+      <div className="pointer-events-auto" style={{ opacity: Math.max(0, (progress-0.88)/0.12) }}>
+        <HoverScaleWrapper>
+          <a href="https://calendly.com/salvia" target="_blank" rel="noopener noreferrer" style={{
+            display:'inline-block', background:'#a8ff57', color:'#0a0a0a',
+            fontWeight:600, fontSize:15, padding:'15px 36px', borderRadius:999,
+            letterSpacing:'-0.01em', textDecoration:'none',
+            boxShadow:'0 0 50px rgba(168,255,87,0.4), 0 4px 24px rgba(0,0,0,0.4)',
+            fontFamily:'DM Sans,sans-serif',
+          }}>
+            Agendar consultoría gratis
+          </a>
+        </HoverScaleWrapper>
+      </div>
+    </div>
+  )
+}
+
+export default function RoseScrollHero() {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [progress, setProgress] = useState(0)
+
+  useEffect(() => {
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
+    window.scrollTo(0, 0)
+  }, [])
+
+  return (
+    <>
+      <style>{`
+        @keyframes scrollPulse {
+          0%,100% { opacity:.55; transform:translateX(-50%) scaleY(1); }
+          50%      { opacity:.12; transform:translateX(-50%) scaleY(.55); }
+        }
+        @keyframes dotPulse {
+          0%,100% { opacity:1 }
+          50%      { opacity:.6 }
+        }
+
+        /* ── Mobile overrides ── */
+        @media (max-width: 767px) {
+          /* Sub-label: reduce letter-spacing so it doesn't overflow */
+          .hero-sublabel {
+            letter-spacing: 0.12em !important;
+            font-size: 8px !important;
+            max-width: 82vw;
+            white-space: normal;
+          }
+          /* Hide the desktop back-layer (SALVIA behind rose) on mobile */
+          .hero-back-layer {
+            display: none !important;
+          }
+          /* Show SALVIA in the front layer on mobile */
+          .hero-salvia-spacer {
+            visibility: visible !important;
+            color: #f5f0ea !important;
+            font-size: min(30vw, 120px) !important;
+            line-height: 0.85 !important;
+          }
+          /* Descriptor más pequeño en mobile */
+          .hero-descriptor {
+            font-size: 10px !important;
+            max-width: 82vw !important;
+            margin-top: 12px !important;
+          }
+          /* Back layer SALVIA más grande en mobile (aunque está oculto, por consistencia) */
+          .hero-back-salvia {
+            font-size: min(30vw, 120px) !important;
+          }
+        }
+      `}</style>
+
+      <div ref={containerRef} style={{ height:'400vh', position:'relative' }}>
+        <div style={{ position:'sticky', top:0, height:'100vh', overflow:'hidden', willChange:'transform' }}>
+
+          <div style={{ position:'absolute', inset:0, zIndex:0, background:'#06100a' }} />
+
+          <video autoPlay muted loop playsInline style={{
+            position:'absolute', inset:0, zIndex:1,
+            width:'100%', height:'100%', objectFit:'cover',
+            filter:'blur(10px) brightness(0.6) saturate(1.5)',
+            transform:'scale(1.06)',
+          }}>
+            <source src="/garden-bg.mp4" type="video/mp4" />
+          </video>
+
+          <div style={{
+            position:'absolute', inset:0, zIndex:2, pointerEvents:'none',
+            background:'linear-gradient(to bottom, rgba(6,16,10,0.5) 0%, rgba(6,16,10,0.15) 45%, rgba(6,16,10,0.55) 100%)',
+          }} />
+
+          {/* z:3 — SALVIA behind rose (desktop only, hidden on mobile via CSS) */}
+          <SalviaBackLayer progress={progress} />
+
+          {/* z:4 — Canvas/rose in front of SALVIA */}
+          <Canvas
+            camera={{ position:[-1.8, 0.5, 7.5], fov:42 }}
+            dpr={[1,2]}
+            gl={{
+              antialias: true,
+              alpha: true,
+              toneMapping: THREE.ReinhardToneMapping,
+              toneMappingExposure: 1.4,
+              outputColorSpace: THREE.SRGBColorSpace,
+            }}
+            style={{ position:'absolute', inset:0, zIndex:4, background:'transparent' }}
+          >
+            <Scene containerRef={containerRef} onProgress={setProgress} />
+          </Canvas>
+
+          <div style={{
+            position:'absolute', inset:0, zIndex:5, pointerEvents:'none',
+            background:'radial-gradient(ellipse 90% 90% at 55% 50%, transparent 28%, rgba(4,10,6,0.72) 100%)',
+          }} />
+
+          <div style={{
+            position:'absolute', bottom:0, left:0, right:0, height:'25%', zIndex:5, pointerEvents:'none',
+            background:'linear-gradient(to top, rgba(4,10,6,0.92), transparent)',
+          }} />
+
+          {/* z:10 — claim, sublabel (front layer, above rose) */}
+          <TextOverlay progress={progress} />
+
+          <div style={{ position:'absolute', right:18, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', gap:10, zIndex:30 }}>
+            {SCENES.map((s, i) => {
+              const active = progress >= s.start && progress < s.end
+              return (
+                <div key={i} style={{
+                  width: active ? 5 : 2, height: active ? 24 : 3, borderRadius:999,
+                  background: active ? '#a8ff57' : 'rgba(255,255,255,0.2)',
+                  transition:'all .35s cubic-bezier(.34,1.56,.64,1)',
+                  animation: active ? 'dotPulse 2s ease-in-out infinite' : undefined,
+                }} />
+              )
+            })}
+          </div>
+
+          {progress < 0.08 && (
+            <div style={{
+              position:'absolute', bottom:34, left:'50%', zIndex:30,
+              display:'flex', flexDirection:'column', alignItems:'center', gap:8,
+              opacity: Math.max(0, 1 - progress / 0.08),
+            }}>
+              <span style={{ fontSize:9, letterSpacing:'0.4em', color:'rgba(240,235,228,0.35)', textTransform:'uppercase', fontFamily:'DM Sans,sans-serif' }}>scroll ↓</span>
+              <div style={{ width:1, height:30, background:'linear-gradient(to bottom,rgba(168,255,87,0.55),transparent)', animation:'scrollPulse 2s ease-in-out infinite' }} />
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
+useGLTF.preload('/red_rose_pbr.glb')
